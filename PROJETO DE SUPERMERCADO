@@ -1,0 +1,199 @@
+import json
+import os
+from datetime import datetime
+
+ARQUIVO = "supermercado_dados.json"
+
+
+# ============================================================
+# UTILITÁRIOS
+# ============================================================
+
+def carregar():
+    if not os.path.exists(ARQUIVO):
+        return {
+            "produtos": {},
+            "clientes": {},
+            "vendas": [],
+            "caixa": 0
+        }
+
+    with open(ARQUIVO, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def salvar(dados):
+    with open(ARQUIVO, "w", encoding="utf-8") as f:
+        json.dump(dados, f, indent=4, ensure_ascii=False)
+
+
+def agora():
+    return str(datetime.now())
+
+
+# ============================================================
+# SISTEMA SUPERMERCADO
+# ============================================================
+
+class Supermercado:
+
+    def __init__(self):
+        self.dados = carregar()
+
+    # ---------------- PRODUTOS ----------------
+
+    def cadastrar_produto(self):
+        nome = input("Nome do produto: ")
+
+        if nome in self.dados["produtos"]:
+            print("Produto já existe.")
+            return
+
+        preco = float(input("Preço: "))
+        estoque = int(input("Estoque: "))
+
+        self.dados["produtos"][nome] = {
+            "preco": preco,
+            "estoque": estoque
+        }
+
+        salvar(self.dados)
+        print("Produto cadastrado!")
+
+    def listar_produtos(self):
+        print("\n=== PRODUTOS ===")
+        for nome, p in self.dados["produtos"].items():
+            print(f"{nome} | R$ {p['preco']:.2f} | estoque: {p['estoque']}")
+
+    # ---------------- CLIENTES ----------------
+
+    def cadastrar_cliente(self):
+        cpf = input("CPF: ")
+
+        if cpf in self.dados["clientes"]:
+            print("Cliente já existe.")
+            return
+
+        nome = input("Nome: ")
+
+        self.dados["clientes"][cpf] = {
+            "nome": nome
+        }
+
+        salvar(self.dados)
+        print("Cliente cadastrado!")
+
+    # ---------------- VENDA ----------------
+
+    def vender(self):
+        cpf = input("CPF cliente: ")
+
+        if cpf not in self.dados["clientes"]:
+            print("Cliente não encontrado.")
+            return
+
+        carrinho = []
+        total = 0
+
+        while True:
+            self.listar_produtos()
+            prod = input("Produto (ou 'fim'): ")
+
+            if prod == "fim":
+                break
+
+            if prod not in self.dados["produtos"]:
+                print("Produto inválido.")
+                continue
+
+            qtd = int(input("Quantidade: "))
+
+            estoque = self.dados["produtos"][prod]["estoque"]
+
+            if qtd > estoque:
+                print("Estoque insuficiente.")
+                continue
+
+            preco = self.dados["produtos"][prod]["preco"]
+
+            self.dados["produtos"][prod]["estoque"] -= qtd
+
+            subtotal = qtd * preco
+            total += subtotal
+
+            carrinho.append({
+                "produto": prod,
+                "quantidade": qtd,
+                "subtotal": subtotal
+            })
+
+        if total == 0:
+            print("Venda cancelada.")
+            return
+
+        self.dados["caixa"] += total
+
+        venda = {
+            "cliente": cpf,
+            "itens": carrinho,
+            "total": total,
+            "data": agora()
+        }
+
+        self.dados["vendas"].append(venda)
+
+        salvar(self.dados)
+
+        print(f"\nVenda concluída! Total: R$ {total:.2f}")
+
+    # ---------------- RELATÓRIO ----------------
+
+    def relatorio(self):
+        print("\n=== RELATÓRIO SUPERMERCADO ===")
+        print(f"Produtos: {len(self.dados['produtos'])}")
+        print(f"Clientes: {len(self.dados['clientes'])}")
+        print(f"Vendas: {len(self.dados['vendas'])}")
+        print(f"Caixa: R$ {self.dados['caixa']:.2f}")
+
+    # ---------------- MENU ----------------
+
+    def menu(self):
+
+        while True:
+            print("""
+=========================
+   SUPERMERCADO
+=========================
+
+1 - Cadastrar produto
+2 - Listar produtos
+3 - Cadastrar cliente
+4 - Realizar venda
+5 - Relatório
+0 - Sair
+""")
+
+            op = input("Escolha: ")
+
+            if op == "1":
+                self.cadastrar_produto()
+            elif op == "2":
+                self.listar_produtos()
+            elif op == "3":
+                self.cadastrar_cliente()
+            elif op == "4":
+                self.vender()
+            elif op == "5":
+                self.relatorio()
+            elif op == "0":
+                break
+            else:
+                print("Opção inválida.")
+
+
+# ============================================================
+# EXECUÇÃO
+# ============================================================
+
+if __name__ == "__main__":
+    Supermercado().menu()
