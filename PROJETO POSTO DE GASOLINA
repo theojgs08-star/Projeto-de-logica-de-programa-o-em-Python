@@ -1,0 +1,194 @@
+import json
+import os
+from datetime import datetime
+
+ARQUIVO = "posto_dados.json"
+
+
+# ============================================================
+# UTILITÁRIOS
+# ============================================================
+
+def carregar():
+    if not os.path.exists(ARQUIVO):
+        return {
+            "combustiveis": {},
+            "clientes": {},
+            "funcionarios": {},
+            "abastecimentos": [],
+            "caixa": 0
+        }
+
+    with open(ARQUIVO, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def salvar(dados):
+    with open(ARQUIVO, "w", encoding="utf-8") as f:
+        json.dump(dados, f, indent=4, ensure_ascii=False)
+
+
+def agora():
+    return str(datetime.now())
+
+
+# ============================================================
+# SISTEMA POSTO DE GASOLINA
+# ============================================================
+
+class Posto:
+
+    def __init__(self):
+        self.dados = carregar()
+
+    # ---------------- COMBUSTÍVEL ----------------
+
+    def cadastrar_combustivel(self):
+        nome = input("Nome do combustível: ")
+
+        if nome in self.dados["combustiveis"]:
+            print("Já existe.")
+            return
+
+        preco = float(input("Preço por litro: "))
+        estoque = float(input("Estoque em litros: "))
+
+        self.dados["combustiveis"][nome] = {
+            "preco": preco,
+            "estoque": estoque
+        }
+
+        salvar(self.dados)
+        print("Combustível cadastrado!")
+
+    def listar_combustiveis(self):
+        print("\n=== COMBUSTÍVEIS ===")
+        for nome, c in self.dados["combustiveis"].items():
+            print(f"{nome} | R$ {c['preco']} | {c['estoque']} L")
+
+    # ---------------- CLIENTE ----------------
+
+    def cadastrar_cliente(self):
+        cpf = input("CPF: ")
+
+        if cpf in self.dados["clientes"]:
+            print("Cliente já existe.")
+            return
+
+        nome = input("Nome: ")
+
+        self.dados["clientes"][cpf] = {
+            "nome": nome
+        }
+
+        salvar(self.dados)
+        print("Cliente cadastrado!")
+
+    # ---------------- FUNCIONÁRIO ----------------
+
+    def cadastrar_funcionario(self):
+        nome = input("Nome: ")
+        cargo = input("Cargo: ")
+
+        self.dados["funcionarios"][nome] = {
+            "cargo": cargo
+        }
+
+        salvar(self.dados)
+        print("Funcionário cadastrado!")
+
+    # ---------------- ABASTECIMENTO ----------------
+
+    def abastecer(self):
+        cpf = input("CPF cliente: ")
+
+        if cpf not in self.dados["clientes"]:
+            print("Cliente não encontrado.")
+            return
+
+        self.listar_combustiveis()
+
+        comb = input("Combustível: ")
+
+        if comb not in self.dados["combustiveis"]:
+            print("Inválido.")
+            return
+
+        litros = float(input("Litros: "))
+
+        estoque = self.dados["combustiveis"][comb]["estoque"]
+
+        if litros > estoque:
+            print("Estoque insuficiente.")
+            return
+
+        preco = self.dados["combustiveis"][comb]["preco"]
+        total = litros * preco
+
+        self.dados["combustiveis"][comb]["estoque"] -= litros
+        self.dados["caixa"] += total
+
+        self.dados["abastecimentos"].append({
+            "cliente": cpf,
+            "combustivel": comb,
+            "litros": litros,
+            "total": total,
+            "data": agora()
+        })
+
+        salvar(self.dados)
+
+        print(f"Abastecimento concluído! Total: R$ {total:.2f}")
+
+    # ---------------- RELATÓRIO ----------------
+
+    def relatorio(self):
+        print("\n=== RELATÓRIO ===")
+        print(f"Caixa: R$ {self.dados['caixa']:.2f}")
+        print(f"Abastecimentos: {len(self.dados['abastecimentos'])}")
+
+    # ---------------- MENU ----------------
+
+    def menu(self):
+
+        while True:
+            print("""
+=========================
+ POSTO DE GASOLINA
+=========================
+
+1 - Cadastrar combustível
+2 - Listar combustíveis
+3 - Cadastrar cliente
+4 - Cadastrar funcionário
+5 - Abastecer
+6 - Relatório
+0 - Sair
+""")
+
+            op = input("Escolha: ")
+
+            if op == "1":
+                self.cadastrar_combustivel()
+            elif op == "2":
+                self.listar_combustiveis()
+            elif op == "3":
+                self.cadastrar_cliente()
+            elif op == "4":
+                self.cadastrar_funcionario()
+            elif op == "5":
+                self.abastecer()
+            elif op == "6":
+                self.relatorio()
+            elif op == "0":
+                break
+            else:
+                print("Opção inválida.")
+
+
+# ============================================================
+# EXECUÇÃO
+# ============================================================
+
+if __name__ == "__main__":
+    Posto().menu()
